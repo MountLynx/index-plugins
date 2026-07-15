@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "name": "calendar-view",
+      "version": "1.0.0",
+      "title": "日历视图",
+      "author": "Index Team",
+      "description": "以月历形式展示带有日期字段的条目，支持按月切换浏览",
+      "icon": "calendar",
+      "extends": "center-panel",
+      "requiresFields": ["date"],
+      "downloadUrl": "https://github.com/MountLynx/index-plugins/releases/download/v1.0.0/calendar-view.zip",
+      "sha256": "PLACEHOLDER_REPLACE_AFTER_RELEASE"
+    }
+  ]
+}
