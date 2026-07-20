@@ -1,0 +1,9 @@
+{
+  "name": "stats",
+  "version": "1.0.0",
+  "title": "统计面板",
+  "author": "Index Team",
+  "description": "自定义筛选条件与计算表达式，对条目属性进行统计分析。支持多统计配置、可收起列表、自定义表达式。",
+  "icon": "chart-bar",
+  "extends": "right-panel"
+}
