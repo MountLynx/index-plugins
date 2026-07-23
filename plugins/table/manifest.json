@@ -1,0 +1,9 @@
+{
+  "name": "table",
+  "version": "1.0.0",
+  "title": "表格",
+  "author": "Index Team",
+  "description": "为每个条目附加一个可编辑的表格，支持增删行/列、双击编辑",
+  "icon": "table",
+  "extends": "right-panel"
+}
