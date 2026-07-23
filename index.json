@@ -9,7 +9,9 @@
       "description": "以月历形式展示带有日期字段的条目，支持按月切换浏览",
       "icon": "calendar",
       "extends": "center-panel",
-      "requiresFields": ["date"],
+      "requiresFields": [
+        "date"
+      ],
       "downloadUrl": "https://github.com/MountLynx/index-plugins/releases/download/v1.0.0/calendar-view.zip",
       "sha256": "PLACEHOLDER_REPLACE_AFTER_RELEASE"
     },
@@ -33,7 +35,7 @@
       "icon": "table",
       "extends": "right-panel",
       "downloadUrl": "https://github.com/MountLynx/index-plugins/releases/download/v1.0.0/table.zip",
-      "sha256": "PLACEHOLDER_REPLACE_AFTER_RELEASE"
+      "sha256": "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
     }
   ]
 }
