@@ -5,6 +5,8 @@ exports.default = function (Vue) {
   var ref = Vue.ref
   var computed = Vue.computed
   var watch = Vue.watch
+  var onMounted = Vue.onMounted
+  var nextTick = Vue.nextTick
 
   // ── Inject CSS ──
   if (!document.getElementById('index-table-css')) {
@@ -40,19 +42,45 @@ exports.default = function (Vue) {
 
       // ── State ──
       var cacheData = ref({})
-      var itemId = ref(null)
-      var editingCell = ref(null) // { row: number, col: number }
+      var editingCell = ref(null)
       var editValue = ref('')
       var saveTimer = null
       var saving = ref(false)
+      var loaded = ref(false)
 
-      // ── Computed: current table for selected item ──
+      // ── Derive current item ID directly from context ──
+      var curId = computed(function () {
+        var sel = ctx.selectedItem
+        if (!sel) return null
+        var v = sel
+        // support both ref-like and plain value
+        if (typeof v.value !== 'undefined') v = v.value
+        return (v && v.item) ? v.item.id : null
+      })
+
+      // ── Watch for ID changes: load cache ──
+      watch(curId, function (newId) {
+        if (newId) {
+          loadData()
+        }
+      }, { immediate: true })
+
+      function loadData() {
+        ctx.readCache().then(function (data) {
+          cacheData.value = data || {}
+          loaded.value = true
+        }).catch(function () {
+          cacheData.value = {}
+          loaded.value = true
+        })
+      }
+
+      // ── Computed: current table ──
       var tableData = computed(function () {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return null
         var data = cacheData.value[id]
         if (data && data.columns && data.rows) return data
-        // First time: create default
         return { columns: ['列1'], rows: [] }
       })
 
@@ -66,36 +94,15 @@ exports.default = function (Vue) {
         return t ? t.rows : []
       })
 
-      // ── Watch selected item ──
-      watch(ctx.selectedItem, function (detail) {
-        if (detail && detail.item && detail.item.id) {
-          itemId.value = detail.item.id
-          loadData()
-        } else {
-          itemId.value = null
-        }
-      }, { immediate: true })
-
-      // ── Load data from cache ──
-      function loadData() {
-        ctx.readCache().then(function (data) {
-          cacheData.value = data || {}
-        }).catch(function () {
-          cacheData.value = {}
-        })
-      }
-
-      // ── Auto-save (debounced) ──
+      // ── Auto-save ──
       function scheduleSave() {
         if (saveTimer) clearTimeout(saveTimer)
         saving.value = true
-        saveTimer = setTimeout(function () {
-          doSave()
-        }, 500)
+        saveTimer = setTimeout(doSave, 500)
       }
 
       function doSave() {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
         var t = tableData.value
         if (!t) return
@@ -124,14 +131,12 @@ exports.default = function (Vue) {
       function commitEdit() {
         var cell = editingCell.value
         if (!cell) return
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
-        // Ensure rows and columns exist
         var data = cacheData.value[id] || { columns: ['列1'], rows: [] }
         if (!data.rows) data.rows = []
         if (!data.rows[cell.row]) data.rows[cell.row] = []
         data.rows[cell.row][cell.col] = editValue.value
-        // Trigger reactivity via replace
         var snapshot = JSON.parse(JSON.stringify(cacheData.value))
         cacheData.value = snapshot
         editingCell.value = null
@@ -144,7 +149,7 @@ exports.default = function (Vue) {
 
       // ── Row operations ──
       function addRow() {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
         var data = cacheData.value[id] || { columns: ['列1'], rows: [] }
         if (!data.rows) data.rows = []
@@ -158,7 +163,7 @@ exports.default = function (Vue) {
       }
 
       function deleteRow(index) {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
         var data = cacheData.value[id]
         if (!data || !data.rows) return
@@ -170,16 +175,13 @@ exports.default = function (Vue) {
 
       // ── Column operations ──
       function addColumn() {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
         var data = cacheData.value[id] || { columns: ['列1'], rows: [] }
         if (!data.columns) data.columns = ['列1']
         data.columns.push('列' + (data.columns.length + 1))
-        // Append empty cell to each row
         if (data.rows) {
-          for (var i = 0; i < data.rows.length; i++) {
-            data.rows[i].push('')
-          }
+          for (var i = 0; i < data.rows.length; i++) data.rows[i].push('')
         }
         var snapshot = JSON.parse(JSON.stringify(cacheData.value))
         cacheData.value = snapshot
@@ -187,32 +189,32 @@ exports.default = function (Vue) {
       }
 
       function deleteColumn() {
-        var id = itemId.value
+        var id = curId.value
         if (!id) return
         var data = cacheData.value[id]
         if (!data || !data.columns || data.columns.length <= 1) return
         data.columns.pop()
         if (data.rows) {
-          for (var i = 0; i < data.rows.length; i++) {
-            data.rows[i].pop()
-          }
+          for (var i = 0; i < data.rows.length; i++) data.rows[i].pop()
         }
         var snapshot = JSON.parse(JSON.stringify(cacheData.value))
         cacheData.value = snapshot
         scheduleSave()
       }
 
-      // ── Render function ──
+      // ── Render ──
       return function () {
-        var detail = ctx.selectedItem ? ctx.selectedItem.value : null
-        var itemName = detail && detail.item ? detail.item.name : ''
+        var id = curId.value
 
-        // No item selected
-        if (!itemId.value) {
+        if (!id) {
           return h('div', { class: 'tbl-wrap' }, [
             h('div', { class: 'tbl-empty' }, '请选择一个条目')
           ])
         }
+
+        var detail = ctx.selectedItem
+        if (detail && typeof detail.value !== 'undefined') detail = detail.value
+        var itemName = (detail && detail.item) ? detail.item.name : ''
 
         var cells = []
 
@@ -222,14 +224,11 @@ exports.default = function (Vue) {
         for (var ci = 0; ci < cols.length; ci++) {
           var colChildren = [cols[ci]]
           if (cols.length > 1) {
-            colChildren.push(h('span', {
-              class: 'tbl-col-del',
-              on: { click: function (c) { return function () { deleteColumn() } }(ci) }
-            }, '×'))
+            colChildren.push(h('span', { class: 'tbl-col-del',
+              on: { click: function () { deleteColumn() } } }, '×'))
           }
           headerRow.push(h('th', {}, colChildren))
         }
-        // Row delete header
         headerRow.push(h('th', { style: { width: '28px' } }, ''))
         cells.push(h('thead', {}, [h('tr', {}, headerRow)]))
 
@@ -241,12 +240,10 @@ exports.default = function (Vue) {
           for (var cj = 0; cj < cols.length; cj++) {
             var val = r[ri][cj] !== undefined ? String(r[ri][cj]) : ''
             var isEditing = editingCell.value && editingCell.value.row === ri && editingCell.value.col === cj
-
             if (isEditing) {
               rowCells.push(h('td', {}, [
                 h('input', {
-                  attrs: { type: 'text' },
-                  class: 'tbl-cell-input',
+                  attrs: { type: 'text' }, class: 'tbl-cell-input',
                   domProps: { value: editValue.value },
                   on: {
                     input: function (e) { editValue.value = e.target.value },
@@ -260,17 +257,12 @@ exports.default = function (Vue) {
               ]))
             } else {
               rowCells.push(h('td', {
-                on: {
-                  dblclick: function (r, c, v) { return function () { startEdit(r, c, v) } }(ri, cj, val)
-                }
+                on: { dblclick: function (row, col, v) { return function () { startEdit(row, col, v) } }(ri, cj, val) }
               }, val || '\u00A0'))
             }
           }
-          // Row delete button
-          rowCells.push(h('td', {
-            class: 'tbl-row-del',
-            on: { click: function (r) { return function () { deleteRow(r) } }(ri) }
-          }, '🗑'))
+          rowCells.push(h('td', { class: 'tbl-row-del',
+            on: { click: function (r) { return function () { deleteRow(r) } }(ri) } }, '🗑'))
           bodyRows.push(h('tr', {}, rowCells))
         }
         cells.push(h('tbody', {}, bodyRows))
