@@ -67,7 +67,7 @@ exports.default = function (Vue) {
       })
 
       // ── Watch selected item ──
-      watch(function () { return ctx.selectedItem ? ctx.selectedItem.value : null }, function (detail) {
+      watch(ctx.selectedItem, function (detail) {
         if (detail && detail.item && detail.item.id) {
           itemId.value = detail.item.id
           loadData()
